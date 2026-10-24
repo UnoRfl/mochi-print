@@ -90,6 +90,11 @@ input[type=range]{width:100%;accent-color:var(--pink)}
 details summary{cursor:pointer;font-weight:600;list-style:none}
 details summary::-webkit-details-marker{display:none}
 details summary::before{content:"⚙️ "}
+.help{margin-top:12px;font-size:14px;line-height:1.45}
+.help summary::before{content:"🔍 "}
+.help ol{padding-left:20px;margin:10px 0 12px}
+.help li{margin-bottom:6px}
+.hint{color:var(--soft);margin:8px 0 0}
 .stepper{display:inline-flex;align-items:center;gap:10px;font-weight:600}
 .stepper button{width:38px;height:38px;padding:0}
 .toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;font-weight:600;font-size:14px}
@@ -128,6 +133,18 @@ footer{text-align:center;color:var(--soft);font-size:13px;margin-top:20px}
       <button id="connectBtn" class="primary">Connect printer</button>
     </div>
     <div id="btNote" class="note" hidden></div>
+    <details class="help">
+      <summary>Printer not showing up?</summary>
+      <ol>
+        <li>It won't appear in your phone's Bluetooth settings. That's normal, it only shows up when you tap <b>Connect printer</b> here.</li>
+        <li><b>Close the Fun Print app completely</b> (swipe it away). The printer can only talk to one app at a time and hides while Fun Print is connected.</li>
+        <li>Turn the printer on (or wake the camera's print mode) and keep it near your phone.</li>
+        <li>On Android, turn on <b>Bluetooth and Location</b>. Chrome needs Location on to find Bluetooth gadgets.</li>
+        <li>Unplug the camera from any computer's USB cable.</li>
+      </ol>
+      <button id="showAll" class="mini">Still nothing? Show all nearby devices</button>
+      <p class="hint">Pick the one called <b>MXW01</b>.</p>
+    </details>
   </section>
 
   <section class="card">
@@ -476,11 +493,14 @@ async function status() {
   setPill(true, `connected · 🔋 ${s[9]}%`);
   return { ok, why: PROBLEMS[s[13]] || 'not ready' };
 }
-async function connect() {
+async function connect(showAll) {
   if (!navigator.bluetooth) return;
   try {
     say('');
-    dev = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'MX' }, { services: [SVC] }], optionalServices: [SVC] });
+    // the MXW01 advertises 0xaf30 but prints over 0xae30
+    dev = await navigator.bluetooth.requestDevice(showAll === true
+      ? { acceptAllDevices: true, optionalServices: [SVC, 0xaf30] }
+      : { filters: [{ namePrefix: 'MX' }, { services: [0xaf30] }, { services: [SVC] }], optionalServices: [SVC, 0xaf30] });
     dev.addEventListener('gattserverdisconnected', () => { ctrl = data = null; setPill(false, 'disconnected'); refreshButtons(); });
     setPill(false, 'connecting…');
     const svc = await (await dev.gatt.connect()).getPrimaryService(SVC);
@@ -540,7 +560,8 @@ async function print() {
   busy = false; refreshButtons();
   setTimeout(() => { bar.hidden = true; }, 1200);
 }
-$('#connectBtn').onclick = connect;
+$('#connectBtn').onclick = () => connect(false);
+$('#showAll').onclick = () => connect(true);
 $('#printBtn').onclick = print;
 $('#feedBtn').onclick = async () => { if (ctrl && !busy) await send(0xa3, [60, 0]); };
 
