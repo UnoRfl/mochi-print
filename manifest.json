@@ -1,0 +1,9 @@
+{
+  "name": "Mochi Print",
+  "short_name": "Mochi Print",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fff4f8",
+  "theme_color": "#ffd9e6",
+  "icons": [{ "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }]
+}

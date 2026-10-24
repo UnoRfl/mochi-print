@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mochi Print</title>
+<meta name="description" content="Print cute photos, notes and doodles on a tiny Bluetooth thermal printer.">
+<meta name="theme-color" content="#ffd9e6">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-512.png">
+<link rel="apple-touch-icon" href="icon-512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Caveat:wght@600;700&family=Pacifico&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fff4f8; --card:#ffffff; --ink:#5b3a4a; --soft:#a8889a;
+  --pink:#ff8fb5; --pink2:#ffd9e6; --mint:#bff0de; --lav:#e4d9ff; --butter:#fff1b8;
+  --line:#f6d3e0; --shadow:0 6px 0 #f3c4d6;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg);
+  background-image:radial-gradient(#ffd3e3 1.4px,transparent 1.6px);
+  background-size:22px 22px;
+  color:var(--ink);font-family:Fredoka,system-ui,sans-serif;font-size:16px;
+  padding:16px 16px calc(32px + env(safe-area-inset-bottom));
+}
+main{max-width:520px;margin:0 auto}
+header{text-align:center;margin:4px 0 14px}
+header svg{width:110px;height:auto;animation:bob 3s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-5px) rotate(-2deg)}}
+h1{font-family:Pacifico,cursive;font-weight:400;font-size:38px;margin:0;color:var(--pink);
+  text-shadow:2px 2px 0 #fff,4px 4px 0 var(--pink2)}
+.tag{margin:2px 0 0;color:var(--soft);font-size:15px}
+.card{background:var(--card);border:2.5px solid var(--line);border-radius:24px;padding:16px;margin:14px 0;box-shadow:var(--shadow)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.grow{flex:1}
+button,.btn{
+  font:inherit;font-weight:600;border:2.5px solid var(--ink);border-radius:999px;cursor:pointer;
+  padding:10px 18px;background:#fff;color:var(--ink);box-shadow:0 3px 0 var(--ink);
+  transition:transform .08s, box-shadow .08s;display:inline-flex;align-items:center;gap:6px;justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+}
+button:active,.btn:active{transform:translateY(3px);box-shadow:0 0 0 var(--ink)}
+button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:0 3px 0 var(--ink)}
+.primary{background:var(--pink);color:#fff}
+.big{font-size:21px;padding:14px 22px;width:100%}
+.mini{padding:6px 12px;font-size:14px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:var(--pink2);font-weight:600;font-size:14px}
+.pill.on{background:var(--mint)}
+.dot{width:9px;height:9px;border-radius:50%;background:#e57399}
+.pill.on .dot{background:#2fb383}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.tabs button{padding:10px 6px;box-shadow:0 3px 0 var(--ink);font-size:15px}
+.tabs button[aria-selected="true"]{background:var(--butter)}
+.pane[hidden]{display:none}
+label.f{display:block;font-weight:600;font-size:14px;margin:12px 0 6px}
+input[type=text],textarea,select{
+  width:100%;font:inherit;color:var(--ink);background:#fffafc;border:2.5px solid var(--line);border-radius:16px;padding:10px 12px;outline:none;
+}
+textarea{min-height:110px;resize:vertical}
+input[type=text]:focus,textarea:focus,select:focus{border-color:var(--pink)}
+input[type=range]{width:100%;accent-color:var(--pink)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips button{padding:7px 13px;font-size:14px;box-shadow:0 2px 0 var(--ink)}
+.chips button[aria-pressed="true"]{background:var(--lav)}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;
+  border:3px dashed var(--pink);border-radius:20px;padding:22px 12px;background:#fff7fa;cursor:pointer;font-weight:600}
+.drop small{color:var(--soft);font-weight:400}
+.drop input{display:none}
+#doodle{width:100%;aspect-ratio:1;border:2.5px solid var(--line);border-radius:16px;touch-action:none;background:#fff;display:block}
+.paper-wrap{display:flex;justify-content:center;padding:6px 0 4px}
+.paper{
+  width:100%;max-width:300px;background:#fff;padding:14px 10px 18px;position:relative;
+  filter:drop-shadow(0 4px 6px rgba(150,90,120,.18));
+  --z:10px;
+  mask:conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) 50%/var(--z) 100%;
+  -webkit-mask:conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) 50%/var(--z) 100%;
+}
+#preview{width:100%;display:block;image-rendering:pixelated}
+.empty{color:var(--soft);text-align:center;padding:30px 8px}
+.bar{height:14px;border:2.5px solid var(--ink);border-radius:999px;overflow:hidden;background:#fff;margin-top:12px}
+.bar i{display:block;height:100%;width:0;background:repeating-linear-gradient(45deg,var(--pink) 0 10px,#ffa9c7 10px 20px);transition:width .15s}
+.msg{min-height:22px;text-align:center;margin-top:10px;font-weight:600}
+.msg.err{color:#d9466f}
+.note{background:var(--butter);border-radius:16px;padding:10px 14px;font-size:14px;line-height:1.4;margin-top:12px}
+.note[hidden]{display:none}
+details summary{cursor:pointer;font-weight:600;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"⚙️ "}
+.stepper{display:inline-flex;align-items:center;gap:10px;font-weight:600}
+.stepper button{width:38px;height:38px;padding:0}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;font-weight:600;font-size:14px}
+.toggle input{width:22px;height:22px;accent-color:var(--pink)}
+footer{text-align:center;color:var(--soft);font-size:13px;margin-top:20px}
+.confetti{position:fixed;top:-20px;font-size:22px;pointer-events:none;animation:fall 1.8s ease-in forwards;z-index:9}
+@keyframes fall{to{transform:translateY(105vh) rotate(540deg);opacity:.2}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <svg viewBox="0 0 140 130" aria-hidden="true">
+      <path d="M58 22 L66 4 L74 22Z" fill="#fff" stroke="#5b3a4a" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="56" y="18" width="28" height="30" rx="3" fill="#fff" stroke="#5b3a4a" stroke-width="3"/>
+      <path d="M70 26c-3-4-8-1-5 3l5 5 5-5c3-4-2-7-5-3z" fill="#ff8fb5"/>
+      <path d="M22 52 L30 26 L48 44Z" fill="#ffb3cc" stroke="#5b3a4a" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M118 52 L110 26 L92 44Z" fill="#ffb3cc" stroke="#5b3a4a" stroke-width="3.5" stroke-linejoin="round"/>
+      <rect x="16" y="40" width="108" height="78" rx="26" fill="#ffd9e6" stroke="#5b3a4a" stroke-width="3.5"/>
+      <rect x="42" y="38" width="56" height="8" rx="4" fill="#5b3a4a"/>
+      <ellipse cx="50" cy="78" rx="5.5" ry="7" fill="#5b3a4a"/>
+      <ellipse cx="90" cy="78" rx="5.5" ry="7" fill="#5b3a4a"/>
+      <circle cx="52" cy="75" r="2" fill="#fff"/><circle cx="92" cy="75" r="2" fill="#fff"/>
+      <ellipse cx="38" cy="92" rx="8" ry="5" fill="#ff8fb5" opacity=".6"/>
+      <ellipse cx="102" cy="92" rx="8" ry="5" fill="#ff8fb5" opacity=".6"/>
+      <path d="M62 90q4 5 8 0q4 5 8 0" fill="none" stroke="#5b3a4a" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+    <h1>Mochi Print</h1>
+    <p class="tag">tiny prints, big love</p>
+  </header>
+
+  <section class="card">
+    <div class="row">
+      <span id="pill" class="pill"><span class="dot"></span><span id="pillText">not connected</span></span>
+      <span class="grow"></span>
+      <button id="connectBtn" class="primary">Connect printer</button>
+    </div>
+    <div id="btNote" class="note" hidden></div>
+  </section>
+
+  <section class="card">
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="photo" aria-selected="true">📷 Photo</button>
+      <button role="tab" data-tab="note" aria-selected="false">💌 Note</button>
+      <button role="tab" data-tab="doodle" aria-selected="false">🖍️ Doodle</button>
+    </div>
+
+    <div class="pane" id="pane-photo">
+      <label class="drop">
+        <input id="file" type="file" accept="image/*">
+        <span style="font-size:30px">🌸</span>
+        <span id="fileLabel">Tap to pick a photo</span>
+        <small>or take a new one</small>
+      </label>
+      <label class="f">Frame</label>
+      <div class="chips" data-group="frame">
+        <button data-v="none">None</button>
+        <button data-v="polaroid">Polaroid</button>
+        <button data-v="hearts">Hearts</button>
+        <button data-v="stars">Stars</button>
+      </div>
+      <label class="f" for="caption">Caption</label>
+      <input id="caption" type="text" maxlength="40" placeholder="best day ever ♡">
+      <label class="f" for="bright">Brightness</label>
+      <input id="bright" type="range" min="-60" max="60" value="15">
+    </div>
+
+    <div class="pane" id="pane-note" hidden>
+      <label class="f" for="noteText">Your note</label>
+      <textarea id="noteText" placeholder="you're my favourite person ♡"></textarea>
+      <label class="f">Font</label>
+      <div class="chips" data-group="font">
+        <button data-v="Fredoka">Bubbly</button>
+        <button data-v="Caveat">Handwritten</button>
+        <button data-v="Pacifico">Fancy</button>
+      </div>
+      <label class="f">Size</label>
+      <div class="chips" data-group="size">
+        <button data-v="30">Small</button>
+        <button data-v="44">Medium</button>
+        <button data-v="64">Big</button>
+      </div>
+      <label class="f">Decoration</label>
+      <div class="chips" data-group="deco">
+        <button data-v="none">None</button>
+        <button data-v="hearts">Hearts</button>
+        <button data-v="stars">Stars</button>
+        <button data-v="box">Cute box</button>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-doodle" hidden>
+      <canvas id="doodle" width="384" height="384"></canvas>
+      <div class="row" style="margin-top:10px">
+        <div class="chips" data-group="pen">
+          <button data-v="4">✏️ Thin</button>
+          <button data-v="10">🖊️ Thick</button>
+          <button data-v="eraser">🧽 Eraser</button>
+        </div>
+        <span class="grow"></span>
+        <button id="clearDoodle" class="mini">Clear</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="paper-wrap"><div class="paper">
+      <canvas id="preview" width="384" height="10" hidden></canvas>
+      <div id="empty" class="empty">your print will show up here ✨</div>
+    </div></div>
+    <div class="row" style="justify-content:center;margin-top:12px">
+      <span class="stepper">copies
+        <button id="minus" class="mini" aria-label="fewer copies">−</button>
+        <span id="copies">1</span>
+        <button id="plus" class="mini" aria-label="more copies">+</button>
+      </span>
+    </div>
+    <div style="margin-top:14px"><button id="printBtn" class="primary big" disabled>Print it! ✨</button></div>
+    <div class="bar" id="bar" hidden><i></i></div>
+    <div id="msg" class="msg"></div>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>Printer settings</summary>
+      <label class="f" for="dark">Darkness <span id="darkVal"></span></label>
+      <input id="dark" type="range" min="40" max="100" value="100">
+      <label class="f">Photo style</label>
+      <div class="chips" data-group="dither">
+        <button data-v="fs">Smooth</button>
+        <button data-v="atk">Dotty</button>
+        <button data-v="none">Bold</button>
+      </div>
+      <label class="toggle">Flip prints (fixes upside-down) <input id="flip" type="checkbox" checked></label>
+      <div class="row" style="margin-top:14px">
+        <button id="feedBtn" class="mini" disabled>Feed paper</button>
+      </div>
+    </details>
+  </section>
+
+  <footer>made with love ♡ · works in Chrome on Android, or the Bluefy app on iPhone</footer>
+</main>
+
+<script>
+(() => {
+const W = 384;
+const $ = s => document.querySelector(s);
+
+// ---------- saved settings ----------
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('mochi.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('mochi.' + k, JSON.stringify(v)); } catch {} }
+};
+const state = {
+  tab: 'photo',
+  frame: store.get('frame', 'polaroid'),
+  font: store.get('font', 'Fredoka'),
+  size: store.get('size', '44'),
+  deco: store.get('deco', 'hearts'),
+  pen: '4',
+  dither: store.get('dither', 'fs'),
+  copies: 1,
+  photo: null,
+};
+$('#dark').value = store.get('dark', 100);
+$('#flip').checked = store.get('flip', true);
+
+// ---------- chips + tabs ----------
+document.querySelectorAll('.chips').forEach(group => {
+  const key = group.dataset.group;
+  const sync = () => group.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === state[key]));
+  group.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    state[key] = b.dataset.v;
+    if (key !== 'pen') store.set(key, state[key]);
+    sync(); update();
+  });
+  sync();
+});
+document.querySelectorAll('[role=tab]').forEach(t => t.addEventListener('click', () => {
+  state.tab = t.dataset.tab;
+  document.querySelectorAll('[role=tab]').forEach(x => x.setAttribute('aria-selected', x === t));
+  document.querySelectorAll('.pane').forEach(p => p.hidden = p.id !== 'pane-' + state.tab);
+  update();
+}));
+
+// ---------- drawing helpers ----------
+function blank(h) {
+  const c = document.createElement('canvas'); c.width = W; c.height = Math.max(1, Math.round(h));
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, c.height); x.fillStyle = '#000'; x.strokeStyle = '#000';
+  return [c, x];
+}
+function heart(x, cx, cy, s) {
+  x.beginPath();
+  x.moveTo(cx, cy + s * .35);
+  x.bezierCurveTo(cx - s * .9, cy - s * .25, cx - s * .45, cy - s * .95, cx, cy - s * .45);
+  x.bezierCurveTo(cx + s * .45, cy - s * .95, cx + s * .9, cy - s * .25, cx, cy + s * .35);
+  x.fill();
+}
+function star(x, cx, cy, s) {
+  x.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 ? s * .42 : s, a = -Math.PI / 2 + i * Math.PI / 5;
+    x.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+  }
+  x.closePath(); x.fill();
+}
+const shape = (kind) => kind === 'stars' ? star : heart;
+function shapeRow(x, kind, y, s) {
+  const n = 9, step = W / n;
+  for (let i = 0; i < n; i++) shape(kind)(x, step * (i + .5), y, i % 2 ? s * .7 : s);
+}
+function shapeBorder(x, kind, h, s) {
+  const draw = shape(kind), m = s + 2;
+  const nx = Math.round((W - 2 * m) / (s * 2.4)), ny = Math.round((h - 2 * m) / (s * 2.4));
+  for (let i = 0; i <= nx; i++) { const px = m + (W - 2 * m) * i / nx; draw(x, px, m, s); draw(x, px, h - m, s); }
+  for (let j = 1; j < ny; j++) { const py = m + (h - 2 * m) * j / ny; draw(x, m, py, s); draw(x, W - m, py, s); }
+}
+function wrap(x, text, maxW) {
+  const out = [];
+  for (const para of text.split('\n')) {
+    let line = '';
+    for (const word of para.split(/\s+/)) {
+      const t = line ? line + ' ' + word : word;
+      if (x.measureText(t).width > maxW && line) { out.push(line); line = word; } else line = t;
+    }
+    out.push(line);
+  }
+  return out;
+}
+
+// ---------- compose what gets printed ----------
+function composePhoto() {
+  const img = state.photo; if (!img) return null;
+  const cap = $('#caption').value.trim(), f = state.frame;
+  const pad = { none: 0, polaroid: 22, hearts: 34, stars: 34 }[f];
+  const iw = W - pad * 2, ih = Math.min(Math.round(img.height * iw / img.width), Math.round(iw * 1.5));
+  const capH = cap ? 66 : (f === 'polaroid' ? 46 : 0);
+  const h = pad + ih + (f === 'none' ? (cap ? capH : 0) : Math.max(pad, capH));
+  const [c, x] = blank(h);
+  // cover-crop the photo into its box
+  const sr = Math.min(img.width / iw, img.height / ih), sw = iw * sr, sh = ih * sr;
+  x.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, pad, pad, iw, ih);
+  imgAdjust(x, pad, pad, iw, ih, +$('#bright').value);
+  if (f === 'polaroid') { x.lineWidth = 4; x.beginPath(); x.roundRect(3, 3, W - 6, h - 6, 14); x.stroke(); }
+  if (f === 'hearts' || f === 'stars') shapeBorder(x, f, h, 9);
+  if (cap) {
+    x.font = '700 40px Caveat'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText(cap, W / 2, pad + ih + capH / 2 + (f === 'none' ? 0 : -2), W - 40);
+  }
+  return c;
+}
+function imgAdjust(x, l, t, w, h, bright) {
+  // grayscale + gentle contrast so prints don't come out muddy
+  const d = x.getImageData(l, t, w, h), p = d.data;
+  for (let i = 0; i < p.length; i += 4) {
+    let g = .299 * p[i] + .587 * p[i + 1] + .114 * p[i + 2];
+    g = (g - 128) * 1.2 + 128 + bright;
+    p[i] = p[i + 1] = p[i + 2] = g;
+  }
+  x.putImageData(d, l, t);
+}
+function composeNote() {
+  const text = $('#noteText').value.trim(); if (!text) return null;
+  const size = +state.size, font = `${state.font === 'Fredoka' ? 600 : 400} ${size}px ${state.font}`;
+  const [, mx] = blank(1); mx.font = font;
+  const inner = state.deco === 'box' ? W - 70 : W - 30;
+  const lines = wrap(mx, text, inner);
+  const lh = size * (state.font === 'Pacifico' ? 1.55 : 1.25);
+  const top = state.deco === 'none' ? 14 : 44;
+  const h = top * 2 + lines.length * lh;
+  const [c, x] = blank(h);
+  x.font = font; x.textAlign = 'center'; x.textBaseline = 'middle';
+  lines.forEach((l, i) => x.fillText(l, W / 2, top + lh * (i + .5)));
+  if (state.deco === 'hearts' || state.deco === 'stars') { shapeRow(x, state.deco, 20, 11); shapeRow(x, state.deco, h - 20, 11); }
+  if (state.deco === 'box') {
+    x.lineWidth = 4; x.setLineDash([14, 9]); x.beginPath(); x.roundRect(14, 14, W - 28, h - 28, 22); x.stroke(); x.setLineDash([]);
+    heart(x, W - 30, 30, 16); heart(x, 30, h - 30, 16);
+  }
+  return c;
+}
+const doodle = $('#doodle'), dx = doodle.getContext('2d');
+let doodleUsed = false;
+dx.fillStyle = '#fff'; dx.fillRect(0, 0, W, W); dx.lineCap = dx.lineJoin = 'round';
+function composeDoodle() {
+  if (!doodleUsed) return null;
+  const [c, x] = blank(W); x.drawImage(doodle, 0, 0); return c;
+}
+
+// ---------- to printer pixels ----------
+function toBits(src) {
+  const w = W, h = src.height;
+  const p = src.getContext('2d').getImageData(0, 0, w, h).data;
+  const g = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) g[i] = .299 * p[i * 4] + .587 * p[i * 4 + 1] + .114 * p[i * 4 + 2];
+  const out = new Uint8Array(w * h);
+  const mode = state.tab === 'photo' ? state.dither : 'none';
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x, old = g[i], v = old < 128 ? 0 : 255;
+    out[i] = v ? 0 : 1;
+    if (mode === 'none') continue;
+    const e = old - v;
+    const add = (dx, dy, f) => { const xx = x + dx, yy = y + dy; if (xx >= 0 && xx < w && yy < h) g[yy * w + xx] += e * f; };
+    if (mode === 'fs') { add(1, 0, 7 / 16); add(-1, 1, 3 / 16); add(0, 1, 5 / 16); add(1, 1, 1 / 16); }
+    else { const f = 1 / 8; add(1, 0, f); add(2, 0, f); add(-1, 1, f); add(0, 1, f); add(1, 1, f); add(0, 2, f); }
+  }
+  return { bits: out, h };
+}
+let current = null;
+function update() {
+  const src = { photo: composePhoto, note: composeNote, doodle: composeDoodle }[state.tab]();
+  const pv = $('#preview');
+  if (!src) { current = null; pv.hidden = true; $('#empty').hidden = false; refreshButtons(); return; }
+  current = toBits(src);
+  pv.height = current.h;
+  const x = pv.getContext('2d'), d = x.createImageData(W, current.h);
+  for (let i = 0; i < current.bits.length; i++) {
+    const v = current.bits[i] ? 40 : 255;
+    d.data[i * 4] = d.data[i * 4 + 1] = d.data[i * 4 + 2] = v; d.data[i * 4 + 3] = 255;
+  }
+  x.putImageData(d, 0, 0);
+  pv.hidden = false; $('#empty').hidden = true;
+  refreshButtons();
+}
+let timer;
+const soon = () => { clearTimeout(timer); timer = setTimeout(update, 120); };
+
+// ---------- inputs ----------
+$('#file').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const img = new Image();
+  img.onload = () => { state.photo = img; $('#fileLabel').textContent = 'Pick a different photo'; update(); };
+  img.src = URL.createObjectURL(f);
+});
+['#caption', '#bright', '#noteText'].forEach(s => $(s).addEventListener('input', soon));
+$('#dark').addEventListener('input', () => { $('#darkVal').textContent = $('#dark').value + '%'; store.set('dark', +$('#dark').value); });
+$('#darkVal').textContent = $('#dark').value + '%';
+$('#flip').addEventListener('change', () => store.set('flip', $('#flip').checked));
+$('#minus').onclick = () => { state.copies = Math.max(1, state.copies - 1); $('#copies').textContent = state.copies; };
+$('#plus').onclick = () => { state.copies = Math.min(5, state.copies + 1); $('#copies').textContent = state.copies; };
+
+let drawing = false, last = null;
+const pos = e => { const r = doodle.getBoundingClientRect(); return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * W / r.height]; };
+doodle.addEventListener('pointerdown', e => { drawing = true; last = pos(e); doodle.setPointerCapture(e.pointerId); stroke(e); });
+doodle.addEventListener('pointermove', e => drawing && stroke(e));
+['pointerup', 'pointercancel'].forEach(t => doodle.addEventListener(t, () => { drawing = false; soon(); }));
+function stroke(e) {
+  const p = pos(e), er = state.pen === 'eraser';
+  dx.strokeStyle = er ? '#fff' : '#000'; dx.lineWidth = er ? 28 : +state.pen;
+  dx.beginPath(); dx.moveTo(...last); dx.lineTo(...p); dx.stroke();
+  last = p; doodleUsed = true; soon();
+}
+$('#clearDoodle').onclick = () => { dx.fillStyle = '#fff'; dx.fillRect(0, 0, W, W); doodleUsed = false; update(); };
+
+// ---------- printer (MXW01 over Bluetooth LE) ----------
+const SVC = 0xae30, CTRL = 0xae01, NOTIFY = 0xae02, DATA = 0xae03;
+let dev = null, ctrl = null, data = null, busy = false;
+const waiters = {};
+function crc8(b) {
+  let c = 0;
+  for (const v of b) { c ^= v; for (let i = 0; i < 8; i++) c = c & 0x80 ? ((c << 1) ^ 7) & 255 : (c << 1) & 255; }
+  return c;
+}
+function packet(cmd, payload) {
+  const p = Uint8Array.from(payload);
+  return Uint8Array.from([0x22, 0x21, cmd, 0, p.length & 255, p.length >> 8, ...p, crc8(p), 0xff]);
+}
+function waitFor(cmd, ms) {
+  return new Promise((res, rej) => {
+    const t = setTimeout(() => { delete waiters[cmd]; rej(new Error('The printer stopped answering')); }, ms);
+    waiters[cmd] = v => { clearTimeout(t); res(v); };
+  });
+}
+async function send(cmd, payload, replyMs) {
+  const reply = replyMs ? waitFor(cmd, replyMs) : null;
+  await ctrl.writeValueWithoutResponse(packet(cmd, payload));
+  return reply;
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const PROBLEMS = { 1: 'out of paper (or the lid is open)', 9: 'out of paper (or the lid is open)', 4: 'too hot, give it a minute', 8: 'low on battery' };
+async function status() {
+  const s = await send(0xa1, [0], 5000);
+  const ok = s[12] === 0;
+  setPill(true, `connected · 🔋 ${s[9]}%`);
+  return { ok, why: PROBLEMS[s[13]] || 'not ready' };
+}
+async function connect() {
+  if (!navigator.bluetooth) return;
+  try {
+    say('');
+    dev = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'MX' }, { services: [SVC] }], optionalServices: [SVC] });
+    dev.addEventListener('gattserverdisconnected', () => { ctrl = data = null; setPill(false, 'disconnected'); refreshButtons(); });
+    setPill(false, 'connecting…');
+    const svc = await (await dev.gatt.connect()).getPrimaryService(SVC);
+    ctrl = await svc.getCharacteristic(CTRL);
+    data = await svc.getCharacteristic(DATA);
+    const n = await svc.getCharacteristic(NOTIFY);
+    n.addEventListener('characteristicvaluechanged', e => {
+      const v = new Uint8Array(e.target.value.buffer);
+      if (v[0] === 0x22 && v[1] === 0x21 && waiters[v[2]]) { const w = waiters[v[2]]; delete waiters[v[2]]; w(v); }
+    });
+    await n.startNotifications();
+    const s = await status();
+    say(s.ok ? 'Yay, printer connected! 🎀' : 'Connected, but the printer is ' + s.why, !s.ok);
+  } catch (e) {
+    if (e.name !== 'NotFoundError') say('Could not connect: ' + e.message, true);
+    setPill(false, 'not connected');
+  }
+  refreshButtons();
+}
+function packRows(bits, h, flip) {
+  const lines = Math.max(h, 90), out = new Uint8Array(lines * 48);
+  for (let y = 0; y < h; y++) for (let x = 0; x < W; x++) {
+    const sx = flip ? W - 1 - x : x, sy = flip ? h - 1 - y : y;
+    if (bits[sy * W + sx]) out[y * 48 + (x >> 3)] |= 1 << (x & 7);
+  }
+  return { out, lines };
+}
+async function print() {
+  if (!current || !ctrl || busy) return;
+  busy = true; refreshButtons();
+  const bar = $('#bar'), fill = bar.querySelector('i');
+  bar.hidden = false; fill.style.width = '0%';
+  try {
+    const { out, lines } = packRows(current.bits, current.h, $('#flip').checked);
+    for (let copy = 1; copy <= state.copies; copy++) {
+      say(state.copies > 1 ? `Printing ${copy} of ${state.copies}…` : 'Printing…');
+      const s = await status();
+      if (!s.ok) throw new Error('The printer is ' + s.why);
+      await send(0xa2, [+$('#dark').value]);
+      await sleep(50);
+      const r = await send(0xa9, [lines & 255, lines >> 8, 0x30, 0], 5000);
+      if (r[6] !== 0) throw new Error('The printer said no, check the paper and lid');
+      for (let y = 0; y < lines; y++) {
+        await data.writeValueWithoutResponse(out.subarray(y * 48, y * 48 + 48));
+        await sleep(12);
+        if (y % 8 === 0) fill.style.width = ((copy - 1 + y / lines) / state.copies * 100) + '%';
+      }
+      const done = waitFor(0xaa, 30000);
+      await send(0xad, [0]);
+      await done;
+    }
+    fill.style.width = '100%';
+    say('Printed! 💖'); confetti();
+  } catch (e) {
+    say(e.message, true);
+  }
+  busy = false; refreshButtons();
+  setTimeout(() => { bar.hidden = true; }, 1200);
+}
+$('#connectBtn').onclick = connect;
+$('#printBtn').onclick = print;
+$('#feedBtn').onclick = async () => { if (ctrl && !busy) await send(0xa3, [60, 0]); };
+
+// ---------- little UI bits ----------
+function setPill(on, text) { $('#pill').classList.toggle('on', on); $('#pillText').textContent = text; }
+function say(t, err) { const m = $('#msg'); m.textContent = t; m.classList.toggle('err', !!err); }
+function refreshButtons() {
+  $('#printBtn').disabled = !current || !ctrl || busy;
+  $('#feedBtn').disabled = !ctrl || busy;
+  $('#connectBtn').textContent = ctrl ? 'Reconnect' : 'Connect printer';
+  $('#printBtn').textContent = busy ? 'Printing…' : !ctrl ? 'Connect the printer first' : !current ? 'Add something to print' : 'Print it! ✨';
+}
+function confetti() {
+  const bits = ['💖', '✨', '🌸', '⭐', '🎀'];
+  for (let i = 0; i < 18; i++) {
+    const s = document.createElement('span'); s.className = 'confetti';
+    s.textContent = bits[i % bits.length]; s.style.left = Math.random() * 100 + 'vw';
+    s.style.animationDelay = Math.random() * .5 + 's';
+    document.body.appendChild(s); setTimeout(() => s.remove(), 2600);
+  }
+}
+if (!navigator.bluetooth) {
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const n = $('#btNote'); n.hidden = false;
+  n.innerHTML = ios
+    ? 'iPhone\'s Safari can\'t talk to Bluetooth printers 🥺 Get the free <b>Bluefy</b> app from the App Store and open this page in it.'
+    : 'This browser can\'t use Bluetooth. Open this page in <b>Chrome</b> (Android or computer) 💕';
+  $('#connectBtn').disabled = true;
+}
+document.fonts.ready.then(update);
+Promise.all(['600 40px Fredoka', '700 40px Caveat', '40px Pacifico'].map(f => document.fonts.load(f))).then(update).catch(() => {});
+refreshButtons();
+})();
+</script>
+</body>
+</html>
