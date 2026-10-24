@@ -247,7 +247,7 @@ footer{text-align:center;color:var(--soft);font-size:13px;margin-top:20px}
     </details>
   </section>
 
-  <footer>made with love ♡ · works in Chrome on Android, or the Bluefy app on iPhone</footer>
+  <footer>made with love ♡ · works in Chrome on Android, or the Bluefy app on iPhone · v3</footer>
 </main>
 
 <script>
@@ -480,9 +480,11 @@ function waitFor(cmd, ms) {
     waiters[cmd] = v => { clearTimeout(t); res(v); };
   });
 }
+// some browsers (older Bluefy) only have writeValue
+const write = (ch, v) => ch.writeValueWithoutResponse ? ch.writeValueWithoutResponse(v) : ch.writeValue(v);
 async function send(cmd, payload, replyMs) {
   const reply = replyMs ? waitFor(cmd, replyMs) : null;
-  await ctrl.writeValueWithoutResponse(packet(cmd, payload));
+  await write(ctrl, packet(cmd, payload));
   return reply;
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -495,28 +497,37 @@ async function status() {
 }
 async function connect(showAll) {
   if (!navigator.bluetooth) return;
+  let step = 'searching';
   try {
-    say('');
+    say('Looking for the printer… 🔍');
     // the MXW01 advertises 0xaf30 but prints over 0xae30
     dev = await navigator.bluetooth.requestDevice(showAll === true
       ? { acceptAllDevices: true, optionalServices: [SVC, 0xaf30] }
       : { filters: [{ namePrefix: 'MX' }, { services: [0xaf30] }, { services: [SVC] }], optionalServices: [SVC, 0xaf30] });
     dev.addEventListener('gattserverdisconnected', () => { ctrl = data = null; setPill(false, 'disconnected'); refreshButtons(); });
-    setPill(false, 'connecting…');
-    const svc = await (await dev.gatt.connect()).getPrimaryService(SVC);
+    setPill(false, 'connecting…'); say('Connecting to ' + (dev.name || 'printer') + '…');
+    step = 'connecting';
+    const server = await dev.gatt.connect();
+    step = 'opening the printer';
+    const svc = await server.getPrimaryService(SVC);
+    step = 'setting up';
     ctrl = await svc.getCharacteristic(CTRL);
     data = await svc.getCharacteristic(DATA);
     const n = await svc.getCharacteristic(NOTIFY);
     n.addEventListener('characteristicvaluechanged', e => {
-      const v = new Uint8Array(e.target.value.buffer);
+      const dv = e.target.value, v = new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength);
       if (v[0] === 0x22 && v[1] === 0x21 && waiters[v[2]]) { const w = waiters[v[2]]; delete waiters[v[2]]; w(v); }
     });
     await n.startNotifications();
+    step = 'asking the printer how it is';
     const s = await status();
     say(s.ok ? 'Yay, printer connected! 🎀' : 'Connected, but the printer is ' + s.why, !s.ok);
   } catch (e) {
-    if (e.name !== 'NotFoundError') say('Could not connect: ' + e.message, true);
+    say(step === 'searching' && e.name === 'NotFoundError'
+      ? 'No printer picked. If the list was empty, open "Printer not showing up?" below 💭'
+      : `Stuck while ${step}: ${e.name} ${e.message}`, true);
     setPill(false, 'not connected');
+    try { if (ctrl === null && dev && dev.gatt.connected) dev.gatt.disconnect(); } catch {}
   }
   refreshButtons();
 }
@@ -544,7 +555,7 @@ async function print() {
       const r = await send(0xa9, [lines & 255, lines >> 8, 0x30, 0], 5000);
       if (r[6] !== 0) throw new Error('The printer said no, check the paper and lid');
       for (let y = 0; y < lines; y++) {
-        await data.writeValueWithoutResponse(out.subarray(y * 48, y * 48 + 48));
+        await write(data, out.slice(y * 48, y * 48 + 48));
         await sleep(12);
         if (y % 8 === 0) fill.style.width = ((copy - 1 + y / lines) / state.copies * 100) + '%';
       }
