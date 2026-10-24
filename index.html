@@ -132,6 +132,7 @@ footer{text-align:center;color:var(--soft);font-size:13px;margin-top:20px}
       <span class="grow"></span>
       <button id="connectBtn" class="primary">Connect printer</button>
     </div>
+    <div id="cmsg" class="msg"></div>
     <div id="btNote" class="note" hidden></div>
     <details class="help">
       <summary>Printer not showing up?</summary>
@@ -247,12 +248,22 @@ footer{text-align:center;color:var(--soft);font-size:13px;margin-top:20px}
     </details>
   </section>
 
-  <footer>made with love ♡ · works in Chrome on Android, or the Bluefy app on iPhone · v3</footer>
+  <footer>made with love ♡ · works in Chrome on Android, or the Bluefy app on iPhone · v4</footer>
 </main>
 
 <script>
+window.addEventListener('error', e => { const m = document.getElementById('cmsg'); if (m) { m.className = 'msg err'; m.textContent = 'Oops, something broke: ' + e.message; } });
+window.addEventListener('unhandledrejection', e => { const m = document.getElementById('cmsg'); if (m) { m.className = 'msg err'; m.textContent = 'Oops: ' + (e.reason && e.reason.message || e.reason); } });
+</script>
+<script>
 (() => {
 const W = 384;
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+    this.moveTo(x + r, y); this.arcTo(x + w, y, x + w, y + h, r); this.arcTo(x + w, y + h, x, y + h, r);
+    this.arcTo(x, y + h, x, y, r); this.arcTo(x, y, x + w, y, r); this.closePath();
+  };
+}
 const $ = s => document.querySelector(s);
 
 // ---------- saved settings ----------
@@ -499,13 +510,15 @@ async function connect(showAll) {
   if (!navigator.bluetooth) return;
   let step = 'searching';
   try {
-    say('Looking for the printer… 🔍');
+    // don't await anything before requestDevice: the picker must open straight from the tap
+    checkBluetooth();
+    say('Looking for the printer… 🔍', false, '#cmsg');
     // the MXW01 advertises 0xaf30 but prints over 0xae30
     dev = await navigator.bluetooth.requestDevice(showAll === true
       ? { acceptAllDevices: true, optionalServices: [SVC, 0xaf30] }
       : { filters: [{ namePrefix: 'MX' }, { services: [0xaf30] }, { services: [SVC] }], optionalServices: [SVC, 0xaf30] });
     dev.addEventListener('gattserverdisconnected', () => { ctrl = data = null; setPill(false, 'disconnected'); refreshButtons(); });
-    setPill(false, 'connecting…'); say('Connecting to ' + (dev.name || 'printer') + '…');
+    setPill(false, 'connecting…'); say('Connecting to ' + (dev.name || 'printer') + '…', false, '#cmsg');
     step = 'connecting';
     const server = await dev.gatt.connect();
     step = 'opening the printer';
@@ -521,11 +534,11 @@ async function connect(showAll) {
     await n.startNotifications();
     step = 'asking the printer how it is';
     const s = await status();
-    say(s.ok ? 'Yay, printer connected! 🎀' : 'Connected, but the printer is ' + s.why, !s.ok);
+    say(s.ok ? 'Yay, printer connected! 🎀' : 'Connected, but the printer is ' + s.why, !s.ok, '#cmsg');
   } catch (e) {
     say(step === 'searching' && e.name === 'NotFoundError'
       ? 'No printer picked. If the list was empty, open "Printer not showing up?" below 💭'
-      : `Stuck while ${step}: ${e.name} ${e.message}`, true);
+      : `Stuck while ${step}: ${e.name} ${e.message}`, true, '#cmsg');
     setPill(false, 'not connected');
     try { if (ctrl === null && dev && dev.gatt.connected) dev.gatt.disconnect(); } catch {}
   }
@@ -577,8 +590,14 @@ $('#printBtn').onclick = print;
 $('#feedBtn').onclick = async () => { if (ctrl && !busy) await send(0xa3, [60, 0]); };
 
 // ---------- little UI bits ----------
+function checkBluetooth() {
+  if (!navigator.bluetooth || !navigator.bluetooth.getAvailability) return;
+  navigator.bluetooth.getAvailability().then(ok => {
+    if (!ok) say('Bluetooth is off or not allowed 🥺 Turn Bluetooth on, and on iPhone go to Settings → Bluefy → turn on Bluetooth. Then reload this page.', true, '#cmsg');
+  }).catch(() => {});
+}
 function setPill(on, text) { $('#pill').classList.toggle('on', on); $('#pillText').textContent = text; }
-function say(t, err) { const m = $('#msg'); m.textContent = t; m.classList.toggle('err', !!err); }
+function say(t, err, el) { const m = $(el || '#msg'); m.textContent = t; m.classList.toggle('err', !!err); }
 function refreshButtons() {
   $('#printBtn').disabled = !current || !ctrl || busy;
   $('#feedBtn').disabled = !ctrl || busy;
@@ -616,6 +635,7 @@ if (!navigator.bluetooth) {
 document.fonts.ready.then(update);
 Promise.all(['600 40px Fredoka', '700 40px Caveat', '40px Pacifico'].map(f => document.fonts.load(f))).then(update).catch(() => {});
 refreshButtons();
+checkBluetooth();
 })();
 </script>
 </body>
