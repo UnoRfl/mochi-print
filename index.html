@@ -133,6 +133,8 @@ footer{text-align:center;color:var(--soft);font-size:13px;margin-top:20px}
       <button id="connectBtn" class="primary">Connect printer</button>
     </div>
     <div id="cmsg" class="msg"></div>
+    <div id="retryAll" style="text-align:center" hidden><button class="mini primary" onclick="document.getElementById('showAll').click()">Try another way 🔄</button>
+      <p class="hint">Then pick <b>MXW01</b> from the list.</p></div>
     <div id="btNote" class="note" hidden></div>
     <details class="help">
       <summary>Printer not showing up?</summary>
@@ -248,7 +250,7 @@ footer{text-align:center;color:var(--soft);font-size:13px;margin-top:20px}
     </details>
   </section>
 
-  <footer>made with love ♡ · works in Chrome on Android, or the Bluefy app on iPhone · v4</footer>
+  <footer>made with love ♡ · works in Chrome on Android, or the Bluefy app on iPhone · v5</footer>
 </main>
 
 <script>
@@ -473,7 +475,9 @@ function stroke(e) {
 $('#clearDoodle').onclick = () => { dx.fillStyle = '#fff'; dx.fillRect(0, 0, W, W); doodleUsed = false; update(); };
 
 // ---------- printer (MXW01 over Bluetooth LE) ----------
-const SVC = 0xae30, CTRL = 0xae01, NOTIFY = 0xae02, DATA = 0xae03;
+// full UUID strings: Bluefy rejects some of the short numeric forms
+const uuid = n => '0000' + n.toString(16) + '-0000-1000-8000-00805f9b34fb';
+const SVC = uuid(0xae30), ADV = uuid(0xaf30), CTRL = uuid(0xae01), NOTIFY = uuid(0xae02), DATA = uuid(0xae03);
 let dev = null, ctrl = null, data = null, busy = false;
 const waiters = {};
 function crc8(b) {
@@ -515,9 +519,10 @@ async function connect(showAll) {
     say('Looking for the printer… 🔍', false, '#cmsg');
     // the MXW01 advertises 0xaf30 but prints over 0xae30
     dev = await navigator.bluetooth.requestDevice(showAll === true
-      ? { acceptAllDevices: true, optionalServices: [SVC, 0xaf30] }
-      : { filters: [{ namePrefix: 'MX' }, { services: [0xaf30] }, { services: [SVC] }], optionalServices: [SVC, 0xaf30] });
+      ? { acceptAllDevices: true, optionalServices: [SVC, ADV] }
+      : { filters: [{ name: 'MXW01' }, { services: [ADV] }], optionalServices: [SVC, ADV] });
     dev.addEventListener('gattserverdisconnected', () => { ctrl = data = null; setPill(false, 'disconnected'); refreshButtons(); });
+    $('#retryAll').hidden = true;
     setPill(false, 'connecting…'); say('Connecting to ' + (dev.name || 'printer') + '…', false, '#cmsg');
     step = 'connecting';
     const server = await dev.gatt.connect();
@@ -536,9 +541,11 @@ async function connect(showAll) {
     const s = await status();
     say(s.ok ? 'Yay, printer connected! 🎀' : 'Connected, but the printer is ' + s.why, !s.ok, '#cmsg');
   } catch (e) {
-    say(step === 'searching' && e.name === 'NotFoundError'
+    const why = e && (e.name || e.message) ? `${e.name || ''} ${e.message || ''}`.trim() : JSON.stringify(e) || String(e);
+    say(step === 'searching' && e && e.name === 'NotFoundError'
       ? 'No printer picked. If the list was empty, open "Printer not showing up?" below 💭'
-      : `Stuck while ${step}: ${e.name} ${e.message}`, true, '#cmsg');
+      : `Stuck while ${step}: ${why}`, true, '#cmsg');
+    if (step === 'searching' && showAll !== true) $('#retryAll').hidden = false;
     setPill(false, 'not connected');
     try { if (ctrl === null && dev && dev.gatt.connected) dev.gatt.disconnect(); } catch {}
   }
