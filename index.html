@@ -584,12 +584,23 @@ function confetti() {
   }
 }
 if (!navigator.bluetooth) {
-  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
-  const n = $('#btNote'); n.hidden = false;
+  // explain instead of leaving a dead button
+  const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const here = location.href.replace(/^https?:\/\//, '');
+  const n = $('#btNote');
   n.innerHTML = ios
-    ? 'iPhone\'s Safari can\'t talk to Bluetooth printers 🥺 Get the free <b>Bluefy</b> app from the App Store and open this page in it.'
-    : 'This browser can\'t use Bluetooth. Open this page in <b>Chrome</b> (Android or computer) 💕';
-  $('#connectBtn').disabled = true;
+    ? 'iPhones can\'t connect to Bluetooth printers from Safari or Chrome 🥺 Get the free <b>Bluefy</b> app, then open this page inside it.'
+      + '<div class="row" style="margin-top:10px"><a class="btn mini primary" href="https://apps.apple.com/app/bluefy-web-ble-browser/id1492822055">Get Bluefy</a>'
+      + '<button class="mini" id="copyLink">Copy page link</button></div>'
+    : /Android/.test(ua)
+      ? 'This browser can\'t use Bluetooth 🥺 Open this page in <b>Chrome</b> instead.'
+        + `<div class="row" style="margin-top:10px"><a class="btn mini primary" href="intent://${here}#Intent;scheme=https;package=com.android.chrome;end">Open in Chrome</a>`
+        + '<button class="mini" id="copyLink">Copy page link</button></div>'
+      : 'This browser can\'t use Bluetooth. Open this page in <b>Chrome</b> or <b>Edge</b> 💕';
+  $('#connectBtn').onclick = () => { n.hidden = false; n.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+  const cp = n.querySelector('#copyLink');
+  if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(location.href); cp.textContent = 'Copied! ♡'; } catch { prompt('Copy this link:', location.href); } };
+  n.hidden = false;
 }
 document.fonts.ready.then(update);
 Promise.all(['600 40px Fredoka', '700 40px Caveat', '40px Pacifico'].map(f => document.fonts.load(f))).then(update).catch(() => {});
